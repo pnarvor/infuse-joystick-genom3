@@ -1,0 +1,15 @@
+# pkg-config file for joystick interface and codels library
+#
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+datarootdir=@datarootdir@
+idldir=@datadir@/idl
+
+Name: joystick-genom3
+Description: joystick interface and codels library
+Version: @PACKAGE_VERSION@
+Requires: openrobots-idl >= 1.2, sdl2
+Cflags: -I${includedir} -I${idldir}
+Libs: -L${libdir} -ljoystick_codels
