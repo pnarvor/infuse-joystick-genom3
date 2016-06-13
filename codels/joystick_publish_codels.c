@@ -126,6 +126,49 @@ joystick_main(sequence_joystick_device_s *devices,
         break;
       }
 
+      case SDL_JOYHATMOTION: {
+        short ud, lr;
+
+        for(i = 0, dev = devices->_buffer; i < devices->_length; i++, dev++)
+          if (dev->id == ev.jhat.which) break;
+        if (!dev) break;
+        state = device->data(dev->name, self);
+        if (!state) break;
+        if (ev.jhat.hat >= dev->hats) {
+          warnx("hat index out of range: %d (max %d)", ev.jhat.hat, dev->hats);
+          break;
+        }
+
+        state->ts.sec = tv.tv_sec;
+        state->ts.nsec = 1000 * tv.tv_usec;
+        switch (ev.jhat.value) {
+          case SDL_HAT_LEFTUP: case SDL_HAT_UP: case SDL_HAT_RIGHTUP:
+            ud = -32768;
+            break;
+
+          case SDL_HAT_LEFTDOWN: case SDL_HAT_DOWN: case SDL_HAT_RIGHTDOWN:
+            ud = 32767;
+            break;
+
+          default: ud = 0; break;
+        }
+        switch (ev.jhat.value) {
+          case SDL_HAT_LEFTUP: case SDL_HAT_LEFT: case SDL_HAT_LEFTDOWN:
+            lr = -32768;
+            break;
+
+          case SDL_HAT_RIGHTUP: case SDL_HAT_RIGHT: case SDL_HAT_RIGHTDOWN:
+            lr = 32767;
+            break;
+
+          default: lr = 0; break;
+        }
+        state->axes._buffer[2*ev.jhat.hat + dev->axes] = ud;
+        state->axes._buffer[2*ev.jhat.hat+1 + dev->axes] = lr;
+        if (i < sizeof(dirty)) dirty[i] = 1;
+        break;
+      }
+
       case SDL_JOYBUTTONDOWN:
       case SDL_JOYBUTTONUP: {
         for(i = 0, dev = devices->_buffer; i < devices->_length; i++, dev++)
@@ -201,13 +244,16 @@ joystick_main(sequence_joystick_device_s *devices,
         state->ts.sec = tv.tv_sec;
         state->ts.nsec = 1000 * tv.tv_usec;
 
-        state->buttons._length = SDL_JoystickNumButtons(j);
+        dev->buttons = SDL_JoystickNumButtons(j);
+        state->buttons._length = dev->buttons;
         if (state->buttons._length > state->buttons._maximum)
           state->buttons._length = state->buttons._maximum;
         for(i = 0; i < state->buttons._length; i++)
           state->buttons._buffer[i] = false;
 
-        state->axes._length = SDL_JoystickNumAxes(j);
+        dev->axes = SDL_JoystickNumAxes(j);
+        dev->hats = SDL_JoystickNumHats(j);
+        state->axes._length = dev->axes + 2*dev->hats;
         if (state->axes._length > state->axes._maximum)
           state->axes._length = state->axes._maximum;
         for(i = 0; i < state->axes._length; i++)
